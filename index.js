@@ -1,9 +1,21 @@
 const { readdirSync } = require('node:fs');
 const { join } = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, MessageFlags, PresenceStatus  } = require('discord.js');
 const { token } = require('./config.json');
+
+const clientOptions = {
+    intents: [
+        GatewayIntentBits.Guilds,
+		GatewayIntentBits.GuildPresences,
+		GatewayIntentBits.GuildMembers
+	],
+	allowedMentions: {
+        parse: ['users', 'roles', 'everyone']
+	}
+};
+
 // Create a new client instance
-const client = new Client({ intents: [GatewayIntentBits.Guilds], allowedMentions: { parse: ['users', 'roles', 'everyone'] } });
+const client = new Client(clientOptions);
 
 // When the client is ready, run this code (only once).
 // The distinction between `client: Client<boolean>` and `readyClient: Client<true>` is important for TypeScript developers.
@@ -37,7 +49,7 @@ for (const folder of commandFolders) {
 // listens for the command when it's requested on discord
 client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand()) return; 
-	console.log(interaction);
+	// console.log(interaction);
     const command = interaction.client.commands.get(interaction.commandName);
 	if (!command) {
 		console.error(`No command matching ${interaction.commandName} was found.`);
