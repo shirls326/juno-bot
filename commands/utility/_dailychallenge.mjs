@@ -8,4 +8,4 @@ async function execute(interaction) {
     await interaction.reply(meows[Math.round(Math.random()*meows.length)]);
 }
 
-export { data, execute };
+export { data, execute }; 
