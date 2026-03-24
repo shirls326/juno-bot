@@ -1,16 +1,18 @@
 const { readdirSync } = require('node:fs');
 const { join } = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, MessageFlags, PresenceStatus  } = require('discord.js');
-const { token } = require('./config.json');
+const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
+
+// Configure dotenv
+require('dotenv').config({ quiet: true });
 
 const clientOptions = {
-    intents: [
-        GatewayIntentBits.Guilds,
+	intents: [
+		GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildPresences,
 		GatewayIntentBits.GuildMembers
 	],
 	allowedMentions: {
-        parse: ['users', 'roles', 'everyone']
+		parse: ['users', 'roles', 'everyone']
 	}
 };
 
@@ -25,9 +27,9 @@ client.once(Events.ClientReady, (readyClient) => {
 });
 
 // Log in to Discord with your client's token
+const token = process.env.DISCORD_JUNO_TOKEN;
 client.login(token);
-client.commands = new Collection(); 
-
+client.commands = new Collection();
 
 const foldersPath = join(__dirname, 'commands');
 const commandFolders = readdirSync(foldersPath);
@@ -48,9 +50,9 @@ for (const folder of commandFolders) {
 
 // listens for the command when it's requested on discord
 client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isChatInputCommand()) return; 
+	if (!interaction.isChatInputCommand()) return;
 	// console.log(interaction);
-    const command = interaction.client.commands.get(interaction.commandName);
+	const command = interaction.client.commands.get(interaction.commandName);
 	if (!command) {
 		console.error(`No command matching ${interaction.commandName} was found.`);
 		return;
