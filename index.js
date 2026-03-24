@@ -33,7 +33,7 @@ const foldersPath = join(__dirname, 'commands');
 const commandFolders = readdirSync(foldersPath);
 for (const folder of commandFolders) {
 	const commandsPath = join(foldersPath, folder);
-	const commandFiles = readdirSync(commandsPath).filter((file) => file.endsWith('.mjs'));
+	const commandFiles = readdirSync(commandsPath).filter((file) => file.endsWith('.mjs') && !file.startsWith('_'));
 	for (const file of commandFiles) {
 		const filePath = join(commandsPath, file);
 		const command = require(filePath);

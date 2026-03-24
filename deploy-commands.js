@@ -12,7 +12,7 @@ const commandFolders = readdirSync(foldersPath);
 for (const folder of commandFolders) {
 	// Grab all the command files from the commands directory you created earlier
 	const commandsPath = join(foldersPath, folder);
-	const commandFiles = readdirSync(commandsPath).filter((file) => file.endsWith('.mjs'));
+	const commandFiles = readdirSync(commandsPath).filter((file) => file.endsWith('.mjs') && !file.startsWith('_'));
 	// Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
 	for (const file of commandFiles) {
 		const filePath = join(commandsPath, file);
