@@ -99,6 +99,49 @@ const data = new SlashCommandBuilder()
             .setRequired(true)
     );
 
+async function fetchMidi(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`download failed: ${res.status}`);
+    return new Midi(new Uint8Array(await res.arrayBuffer()));
+}
+
+function extractNotes(midi) {
+    const allNotes = midi.tracks.flatMap(t => t.notes);
+    allNotes.sort((a, b) => a.time - b.time);
+    const notes = allNotes.filter(n => n.time < MAX_DURATION_SEC).slice(0, MAX_NOTES);
+    return { notes, allNotes };
+}
+
+function renderNotes(notes, sample) {
+    const lastNote = notes[notes.length - 1];
+    const totalDuration = Math.min(lastNote.time + lastNote.duration + 1.0, MAX_DURATION_SEC);
+    const outBuffer = new Float32Array(Math.ceil(SAMPLE_RATE * totalDuration));
+    const fadeOutSamples = Math.floor(0.03 * SAMPLE_RATE); // 30ms fade-out to avoid clicks
+
+    for (const note of notes) {
+        const pitched = pitchShift(sample.samples, sample.sampleRate, midiToFreq(note.midi), sample.baseFreq);
+        const startSample = Math.floor(note.time * SAMPLE_RATE);
+        const noteLenSamples = Math.floor(note.duration * SAMPLE_RATE);
+        const len = Math.min(pitched.length, noteLenSamples, outBuffer.length - startSample);
+        for (let i = 0; i < len; i++) {
+            const fadeGain = i >= len - fadeOutSamples ? (len - i) / fadeOutSamples : 1;
+            outBuffer[startSample + i] += pitched[i] * note.velocity * fadeGain;
+        }
+    }
+    return outBuffer;
+}
+
+function normalizeBuffer(buffer) {
+    let maxAbs = 0;
+    for (let i = 0; i < buffer.length; i++) {
+        if (Math.abs(buffer[i]) > maxAbs) maxAbs = Math.abs(buffer[i]);
+    }
+    if (maxAbs > 0.01) {
+        const scale = 0.9 / maxAbs;
+        for (let i = 0; i < buffer.length; i++) buffer[i] *= scale;
+    }
+}
+
 async function execute(interaction) {
     const attachment = interaction.options.getAttachment('midi');
     const name = attachment.name.toLowerCase();
@@ -112,49 +155,19 @@ async function execute(interaction) {
     try {
         const sample = allSamples[Math.floor(Math.random() * allSamples.length)];
 
-        const res = await fetch(attachment.url);
-        if (!res.ok) throw new Error(`download failed: ${res.status}`);
-        const midi = new Midi(new Uint8Array(await res.arrayBuffer()));
-
-        const allNotes = midi.tracks.flatMap(t => t.notes);
-        if (allNotes.length === 0) {
+        const midi = await fetchMidi(attachment.url);
+        const { notes, allNotes } = extractNotes(midi);
+        if (notes.length === 0) {
             await interaction.editReply('no notes found in that Meow-IDI file :(');
             return;
         }
 
-        allNotes.sort((a, b) => a.time - b.time);
-        const notes = allNotes.filter(n => n.time < MAX_DURATION_SEC).slice(0, MAX_NOTES);
-        const truncated = notes.length < allNotes.length;
-
-        const lastNote = notes[notes.length - 1];
-        const totalDuration = Math.min(lastNote.time + lastNote.duration + 1.0, MAX_DURATION_SEC);
-        const outBuffer = new Float32Array(Math.ceil(SAMPLE_RATE * totalDuration));
-
-        const fadeOutSamples = Math.floor(0.03 * SAMPLE_RATE); // 30ms fade-out to avoid clicks
-
-        for (const note of notes) {
-            const pitched = pitchShift(sample.samples, sample.sampleRate, midiToFreq(note.midi), sample.baseFreq);
-            const startSample = Math.floor(note.time * SAMPLE_RATE);
-            const noteLenSamples = Math.floor(note.duration * SAMPLE_RATE);
-            const len = Math.min(pitched.length, noteLenSamples, outBuffer.length - startSample);
-            for (let i = 0; i < len; i++) {
-                const fadeGain = i >= len - fadeOutSamples ? (len - i) / fadeOutSamples : 1;
-                outBuffer[startSample + i] += pitched[i] * note.velocity * fadeGain;
-            }
-        }
-
-        // Normalize
-        let maxAbs = 0;
-        for (let i = 0; i < outBuffer.length; i++) {
-            if (Math.abs(outBuffer[i]) > maxAbs) maxAbs = Math.abs(outBuffer[i]);
-        }
-        if (maxAbs > 0.01) {
-            const scale = 0.9 / maxAbs;
-            for (let i = 0; i < outBuffer.length; i++) outBuffer[i] *= scale;
-        }
+        const outBuffer = renderNotes(notes, sample);
+        normalizeBuffer(outBuffer);
 
         const wavBuffer = encodeWav(outBuffer);
         const file = new AttachmentBuilder(wavBuffer, { name: 'meow.wav' });
+        const truncated = notes.length < allNotes.length;
         const truncMsg = truncated ? ` (first ${MAX_NOTES} of ${allNotes.length} notes)` : '';
         await interaction.editReply({
             content: `meow! converted ${notes.length} notes${truncMsg} :3`,
