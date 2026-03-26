@@ -21,6 +21,8 @@ const clientOptions = {
 // Create a new client instance
 const client = new Client(clientOptions);
 
+
+
 client.commands = new Collection();
 const foldersPath = join(__dirname, 'commands');
 const commandFolders = readdirSync(foldersPath);
