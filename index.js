@@ -21,23 +21,6 @@ const clientOptions = {
 // Create a new client instance
 const client = new Client(clientOptions);
 
-client.on('messageCreate', async (message) => {
-  // 1. Ignore messages from bots (prevents infinite loops)
-  if (message.author.bot) return;
-
-  // 2. Filter by specific channel
-  if (message.channel.id !== '1485752622857326692' && message.channel.id !== '1486081968243474587') return;
-	console.log(`Received message: ${message.content}`);
-  try {
-    // 3. React! 
-    // Standard emoji: '✅'
-    // Custom emoji ID: '123456789012345678'
-    await message.react('1450675679128457307'); 
-  } catch (error) {
-    console.error('Failed to react:', error);
-  }
-});
-
 
 
 client.commands = new Collection();
