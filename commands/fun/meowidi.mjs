@@ -6,7 +6,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SAMPLES_DIR = join(__dirname, '..', '..', 'assets', 'samples');
+const SAMPLES_DIR = join(__dirname, '..', '..', 'assets', 'meowidi', 'samples');
 
 const SAMPLE_RATE = 44100;
 const MAX_DURATION_SEC = 30;
@@ -194,12 +194,13 @@ async function execute(interaction) {
         normalizeBuffer(outBuffer);
 
         const wavBuffer = encodeWav(outBuffer);
-        const file = new AttachmentBuilder(wavBuffer, { name: 'meow.wav' });
+        const baseName = attachment.name.replace(/\.(mid|midi)$/i, '');
+        const file = new AttachmentBuilder(wavBuffer, { name: `${baseName}.wav` });
         let truncMsg = '';
         if (noteTruncated && timeTruncated) {
-            truncMsg = ` (first ${MAX_NOTES} of ${allNotes.length} notes, first ${MAX_DURATION_SEC}s)`;
+            truncMsg = ` (first ${allNotes.length} of ${MAX_NOTES} notes, first ${MAX_DURATION_SEC}s)`;
         } else if (noteTruncated) {
-            truncMsg = ` (first ${MAX_NOTES} of ${allNotes.length} notes)`;
+            truncMsg = ` (first ${allNotes.length} of ${MAX_NOTES} notes)`;
         } else if (timeTruncated) {
             truncMsg = ` (first ${MAX_DURATION_SEC}s of song)`;
         }
