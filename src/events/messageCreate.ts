@@ -1,8 +1,8 @@
-import { Events } from 'discord.js';
+import { Events, Message } from 'discord.js';
 
 const name = Events.MessageCreate;
 
-async function execute(message) {
+async function execute(message: Message) {
     if (message.author.bot) return;
 
     const handlers = message.client.messageHandlers;

@@ -1,9 +1,9 @@
-import { REST, Routes } from 'discord.js';
+import { ApplicationCommand, REST, Routes } from 'discord.js';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from 'dotenv';
 
-import { __dirname, getExportsFromModule } from './utils/filesystem.js';
+import { __dirname, getExportsFromModule } from './utils/filesystem.ts';
 
 // Configure dotenv
 config({ quiet: true });
@@ -15,7 +15,7 @@ const commandFolders = readdirSync(foldersPath);
 
 for (const folder of commandFolders) {
 	const commandsPath = join(foldersPath, folder);
-	const commandFiles = readdirSync(commandsPath).filter((file) => file.endsWith('.js') && !file.startsWith('_'));
+	const commandFiles = readdirSync(commandsPath).filter((file) => file.endsWith('.ts') && !file.startsWith('_'));
 
 	// Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
 	for (const file of commandFiles) {
@@ -30,8 +30,8 @@ for (const folder of commandFolders) {
 }
 
 // Construct and prepare an instance of the REST module
-const token = process.env.DISCORD_BOT_TOKEN;
-const clientId = process.env.DISCORD_CLIENT_ID;
+const token = process.env['DISCORD_BOT_TOKEN'] ?? '';
+const clientId = process.env['DISCORD_CLIENT_ID'] ?? '';
 const rest = new REST().setToken(token);
 
 // and deploy your commands!
@@ -40,7 +40,7 @@ const rest = new REST().setToken(token);
 		console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
 		// The put method is used to fully refresh all commands in ALL guilds
-		const data = await rest.put(Routes.applicationCommands(clientId), { body: commands });
+		const data = await rest.put(Routes.applicationCommands(clientId), { body: commands }) as ApplicationCommand[];
 
 		console.log(`Successfully reloaded ${data.length} application (/) commands.`);
 	} catch (error) {

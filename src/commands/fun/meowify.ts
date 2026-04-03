@@ -1,8 +1,8 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 
 const NO_MEOW_SUBSTRINGS = ["time", "some", "sum", "ome", "mer"];
 
-function meowify(input) {
+function meowify(input: string) {
     if (!input) return "What the meow? (Please tell me more)";
 
     const processed = input.replace(/\w+/g, (word) => {
@@ -27,7 +27,7 @@ function meowify(input) {
         }
 
         if (validMatches.length === 1) {
-            const i = validMatches[0];
+            const i = validMatches[0] ?? 0;
             // Preserve original casing of the start/end of the word
             return word.slice(0, i) + "MEOW" + word.slice(i + 2);
         }
@@ -39,14 +39,14 @@ function meowify(input) {
     return processed.length > 2000 ? processed.slice(0, 1997) + "..." : processed;
 }
 
- const data = new SlashCommandBuilder()
-                .setName('meowify')
-                .setDescription('Translate your words into cat speak.')
-                .addStringOption(option => option.setName('text').setDescription('Text to meowify').setRequired(true)
-);
+const data = new SlashCommandBuilder()
+    .setName('meowify')
+    .setDescription('Translate your words into cat speak.')
+    .addStringOption(option => option.setName('text').setDescription('Text to meowify').setRequired(true)
+    );
 
-async function execute(interaction) {
-    const input = interaction.options.getString('text');
+async function execute(interaction: ChatInputCommandInteraction) {
+    const input = interaction.options.getString('text') ?? '';
     const response = meowify(input);
 
     if (response === input) { // No changes

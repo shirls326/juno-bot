@@ -9,6 +9,7 @@
 3. Build your bot locally. To do so, run the following series of commands without any other changes:
 ```
 npm install
+npm run build
 npm run deploy-commands
 npm start
 ```
@@ -20,8 +21,8 @@ npm start
 3. Test your changes thoroughly using your personal discord bot
 4. In your feature branch, commit your changes
 5. Open a PR on [GitHub](https://github.com/shirls326/juno-bot/pulls) and include a brief description of your change and its purpose
-Test 
-### Deploying New Commands
+
+### Testing New Commands
 1. Run the following npm script:
 ```
 npm run deploy-commands

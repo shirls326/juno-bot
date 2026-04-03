@@ -1,11 +1,10 @@
-import { SlashCommandBuilder, AttachmentBuilder, MessageFlags } from 'discord.js';
-import pkg from '@tonejs/midi';
-const { Midi } = pkg;
+import { SlashCommandBuilder, AttachmentBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
+import { Midi } from '@tonejs/midi/dist/Midi.js';
+import type { Note } from '@tonejs/midi/dist/Note.js';
 import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { __dirname } from '../../utils/filesystem.ts';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const SAMPLES_DIR = join(__dirname, '..', '..', 'assets', 'meowidi', 'samples');
 
 const SAMPLE_RATE = 44100;
@@ -13,23 +12,23 @@ const MAX_DURATION_SEC = 30;
 const MAX_NOTES = 2000;
 const MAX_MIDI_SIZE = 10 * 1024 * 1024; // 10 MB
 
-function midiToFreq(midi) {
+function midiToFreq(midi: number) {
     return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
 const SOURCE_SAMPLE_RATE = 48000;
 
 const SAMPLE_FILES = [
-    { file: 'Cat_idle2.wav',       baseFreq: 489.80 },
-    { file: 'Cat_idle3.wav',       baseFreq: 533.33 },
-    { file: 'Cat_idle4.wav',       baseFreq: 607.59 },
+    { file: 'Cat_idle2.wav', baseFreq: 489.80 },
+    { file: 'Cat_idle3.wav', baseFreq: 533.33 },
+    { file: 'Cat_idle4.wav', baseFreq: 607.59 },
     { file: 'Stray_cat_idle1.wav', baseFreq: 539.33 },
     { file: 'Stray_cat_idle2.wav', baseFreq: 657.53 },
     { file: 'Stray_cat_idle4.wav', baseFreq: 676.06 },
 ];
 
 /** Parse a 16-bit mono PCM WAV Buffer into a Float32Array. */
-function parseWav(buf) {
+function parseWav(buf: Buffer): Float32Array {
     // Walk chunks to find data
     let dataOffset = -1, dataSize = -1, i = 12;
     while (i < buf.length - 8) {
@@ -46,7 +45,7 @@ function parseWav(buf) {
 }
 
 /** Resample and pitch-shift a sample to a target frequency using linear interpolation. */
-function pitchShift(samples, srcRate, targetFreq, baseFreq) {
+function pitchShift(samples: Float32Array, srcRate: number, targetFreq: number, baseFreq: number): Float32Array {
     // Combined rate-conversion + pitch-shift into one pass
     // Clamp playbackRate to avoid extreme allocations from very low/high MIDI notes
     const playbackRate = Math.max(0.1, Math.min(10, (targetFreq / baseFreq) * (srcRate / SAMPLE_RATE)));
@@ -56,12 +55,12 @@ function pitchShift(samples, srcRate, targetFreq, baseFreq) {
         const pos = i * playbackRate;
         const lo = Math.floor(pos);
         const hi = Math.min(lo + 1, samples.length - 1);
-        out[i] = samples[lo] + (pos - lo) * (samples[hi] - samples[lo]);
+        out[i] = samples[lo]! + (pos - lo) * (samples[hi]! - samples[lo]!);
     }
     return out;
 }
 
-function encodeWav(floatBuffer) {
+function encodeWav(floatBuffer: Float32Array) {
     const dataSize = floatBuffer.length * 2;
     const wav = Buffer.alloc(44 + dataSize);
 
@@ -80,15 +79,21 @@ function encodeWav(floatBuffer) {
     wav.writeUInt32LE(dataSize, 40);
 
     for (let i = 0; i < floatBuffer.length; i++) {
-        wav.writeInt16LE(Math.round(Math.max(-1, Math.min(1, floatBuffer[i])) * 32767), 44 + i * 2);
+        wav.writeInt16LE(Math.round(Math.max(-1, Math.min(1, floatBuffer[i] ?? 1)) * 32767), 44 + i * 2);
     }
     return wav;
 }
 
-// Lazily load samples on first use to avoid delaying bot startup
-let loadedSamples = null;
+interface Sample {
+    samples: Float32Array;
+    sampleRate: number;
+    baseFreq: number;
+}
 
-function getSamples() {
+// Lazily load samples on first use to avoid delaying bot startup
+let loadedSamples: Sample[];
+
+function getSamples(): Sample[] {
     if (!loadedSamples) {
         loadedSamples = SAMPLE_FILES.map(({ file, baseFreq }) => ({
             samples: parseWav(readFileSync(join(SAMPLES_DIR, file))),
@@ -109,7 +114,7 @@ const data = new SlashCommandBuilder()
             .setRequired(true)
     );
 
-async function fetchMidi(url) {
+async function fetchMidi(url: string) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000); // 10s timeout
     try {
@@ -124,7 +129,7 @@ async function fetchMidi(url) {
     }
 }
 
-function extractNotes(midi) {
+function extractNotes(midi: Midi) {
     const allNotes = midi.tracks.flatMap(t => t.notes);
     allNotes.sort((a, b) => a.time - b.time);
     const timeFiltered = allNotes.filter(n => n.time < MAX_DURATION_SEC);
@@ -134,12 +139,12 @@ function extractNotes(midi) {
     return { notes, allNotes, timeTruncated, noteTruncated };
 }
 
-function renderNotes(notes, sample) {
-    const lastNote = notes[notes.length - 1];
+function renderNotes(notes: Note[], sample: Sample) {
+    const lastNote = notes[notes.length - 1]!;
     const totalDuration = Math.min(lastNote.time + lastNote.duration + 1.0, MAX_DURATION_SEC);
     const outBuffer = new Float32Array(Math.ceil(SAMPLE_RATE * totalDuration));
     const fadeOutSamples = Math.floor(0.03 * SAMPLE_RATE); // 30ms fade-out to avoid clicks
-    const pitchCache = new Map();
+    const pitchCache = new Map<number, Float32Array>();
 
     for (const note of notes) {
         const startSample = Math.floor(note.time * SAMPLE_RATE);
@@ -148,29 +153,31 @@ function renderNotes(notes, sample) {
         if (!pitchCache.has(note.midi)) {
             pitchCache.set(note.midi, pitchShift(sample.samples, sample.sampleRate, midiToFreq(note.midi), sample.baseFreq));
         }
-        const pitched = pitchCache.get(note.midi);
+        const pitched = pitchCache.get(note.midi)!;
         const len = Math.min(pitched.length, noteLenSamples, outBuffer.length - startSample);
         for (let i = 0; i < len; i++) {
             const fadeGain = i >= len - fadeOutSamples ? (len - i) / fadeOutSamples : 1;
-            outBuffer[startSample + i] += pitched[i] * note.velocity * fadeGain;
+            outBuffer[startSample + i] = (outBuffer[startSample + i] ?? 0) + pitched[i]! * note.velocity * fadeGain;
         }
     }
     return outBuffer;
 }
 
-function normalizeBuffer(buffer) {
+function normalizeBuffer(buffer: Float32Array) {
     let maxAbs = 0;
     for (let i = 0; i < buffer.length; i++) {
-        if (Math.abs(buffer[i]) > maxAbs) maxAbs = Math.abs(buffer[i]);
+        const val = buffer[i]!;
+        if (Math.abs(val) > maxAbs) maxAbs = Math.abs(val);
     }
     if (maxAbs > 0.01) {
         const scale = 0.9 / maxAbs;
-        for (let i = 0; i < buffer.length; i++) buffer[i] *= scale;
+        for (let i = 0; i < buffer.length; i++)
+            buffer[i] = (buffer[i] ?? 0) * scale;
     }
 }
 
-async function execute(interaction) {
-    const attachment = interaction.options.getAttachment('midi');
+async function execute(interaction: ChatInputCommandInteraction) {
+    const attachment = interaction.options.getAttachment('midi')!;
     const name = attachment.name.toLowerCase();
     if (!name.endsWith('.mid') && !name.endsWith('.midi')) {
         await interaction.reply({ content: 'please give me a .mid or .midi file! :(', flags: MessageFlags.Ephemeral });
@@ -181,7 +188,7 @@ async function execute(interaction) {
 
     try {
         const samples = getSamples();
-        const sample = samples[Math.floor(Math.random() * samples.length)];
+        const sample = samples[Math.floor(Math.random() * samples.length)]!;
 
         const midi = await fetchMidi(attachment.url);
         const { notes, allNotes, timeTruncated, noteTruncated } = extractNotes(midi);

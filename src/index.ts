@@ -1,14 +1,14 @@
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { Client, Collection, GatewayIntentBits } from 'discord.js';
+import { Client, Collection, GatewayIntentBits, type ClientOptions, type Command, type Event, type MessageHandler } from 'discord.js';
 import { config } from 'dotenv';
 
-import { __dirname, getExportsFromModule } from './utils/filesystem.js';
+import { __dirname, getExportsFromModule } from './utils/filesystem.ts';
 
 // Configure dotenv
 config({ quiet: true });
 
-const clientOptions = {
+const opts: ClientOptions = {
 	intents: [
 		GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildPresences,
@@ -22,7 +22,7 @@ const clientOptions = {
 };
 
 // Create a new client instance
-const client = new Client(clientOptions);
+const client = new Client(opts);
 
 // Initialize commands
 client.commands = new Collection();
@@ -31,10 +31,10 @@ const commandFolders = readdirSync(foldersPath);
 
 for (const folder of commandFolders) {
 	const commandsPath = join(foldersPath, folder);
-	const commandFiles = readdirSync(commandsPath).filter(file => file.endsWith('.js') && !file.startsWith('_'));
+	const commandFiles = readdirSync(commandsPath).filter(file => file.endsWith('.ts') && !file.startsWith('_'));
 	for (const file of commandFiles) {
 		const filePath = join(commandsPath, file);
-		const command = await getExportsFromModule(filePath);
+		const command: Command = await getExportsFromModule(filePath);
 		// Set a new item in the Collection with the key as the command name and the value as the exported module
 		if ('data' in command && 'execute' in command) {
 			client.commands.set(command.data.name, command);
@@ -46,11 +46,11 @@ for (const folder of commandFolders) {
 
 // Initialize events
 const eventsPath = join(__dirname, 'events');
-const eventFiles = readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+const eventFiles = readdirSync(eventsPath).filter(file => file.endsWith('.ts'));
 
 for (const file of eventFiles) {
 	const filePath = join(eventsPath, file);
-	const event = await getExportsFromModule(filePath);
+	const event: Event = await getExportsFromModule(filePath);
 	if (event.once) {
 		client.once(event.name, (...args) => event.execute(...args));
 	} else {
@@ -62,14 +62,14 @@ for (const file of eventFiles) {
 client.messageHandlers = new Collection();
 
 const handlersPath = join(__dirname, 'handlers/message');
-const handlerFiles = readdirSync(handlersPath).filter(file => file.endsWith('.js'));
+const handlerFiles = readdirSync(handlersPath).filter(file => file.endsWith('.ts'));
 
 for (const file of handlerFiles) {
 	const filePath = join(handlersPath, file);
-	const handler = await getExportsFromModule(filePath);
+	const handler: MessageHandler = await getExportsFromModule(filePath);
 	client.messageHandlers.set(handler.name, handler);
 }
 
 // Log in to Discord with your client's token
-const token = process.env.DISCORD_BOT_TOKEN;
+const token = process.env['DISCORD_BOT_TOKEN'];
 client.login(token);

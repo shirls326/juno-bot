@@ -1,12 +1,12 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, Collection, SlashCommandBuilder } from 'discord.js';
 
 const data = new SlashCommandBuilder().setName('randomping').setDescription('ping a random user in the server');
 
 // pings a random online user in the server
-async function execute(interaction) {
+async function execute(interaction: ChatInputCommandInteraction) {
     // First use guild.members.fetch to make sure all members are cached
-    const fetchedMembers = await interaction.guild.members.fetch({ withPresences: true });
-    
+    const fetchedMembers = await interaction.guild?.members.fetch({ withPresences: true }) ?? new Collection();
+
     // Filter the members to get only non-bots that are who are online
     // N.B: Offline members have member.presence?.status === undefined
     const onlineMembers = fetchedMembers
@@ -15,7 +15,7 @@ async function execute(interaction) {
 
     // pick a random member out of the total online members
     const randomOnlineMemberId = onlineMembers.randomKey();
-    
+
     // const randomOnlineMemberId = onlineMembers.random().user;
     console.log(onlineMembers);
 

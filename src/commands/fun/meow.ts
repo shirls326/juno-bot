@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 
 const data = new SlashCommandBuilder().setName('meow').setDescription('meow');
 
@@ -17,8 +17,9 @@ const meows = [
     'mew'
 ];
 
-async function execute(interaction) {
-    await interaction.reply(meows[Math.floor(Math.random()*meows.length)]);
+async function execute(interaction: ChatInputCommandInteraction) {
+    const meow = meows[Math.floor(Math.random() * meows.length)]!;
+    await interaction.reply(meow);
 }
 
 export { data, execute };
