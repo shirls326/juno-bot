@@ -10,7 +10,11 @@
     "build": "tsc --noEmit",
     "start": "tsx src/index.ts",
     "deploy-commands": "tsx src/deploy-commands.ts",
-    "clean": "rm -rf node_modules package-lock.json dist"
+    "lint": "npx eslint *.ts",
+    "check-format": "npx prettier . --check",
+    "apply-format": "npx prettier . --write",
+    "clean": "rm -rf node_modules package-lock.json dist",
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@tonejs/midi": "^2.0.28",
@@ -21,7 +25,16 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.5.0",
-    "eslint": "^10.1.0",
-    "typescript": "^6.0.2"
+    "eslint": "^10.2.0",
+    "globals": "^17.4.0",
+    "husky": "^9.1.7",
+    "jiti": "^2.6.1",
+    "lint-staged": "^16.4.0",
+    "prettier": "3.8.1",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.0"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
   }
 }
