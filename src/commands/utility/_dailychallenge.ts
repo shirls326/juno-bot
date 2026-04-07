@@ -1,11 +1,13 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 
-const data = new SlashCommandBuilder().setName('dailychallenge').setDescription('gives the daily challenge information');
+const data = new SlashCommandBuilder()
+  .setName('dailychallenge')
+  .setDescription('gives the daily challenge information');
 
-// daily challenge will be 
+// daily challenge will be
 
 async function execute(interaction: ChatInputCommandInteraction) {
-    await interaction.reply('jon');
+  await interaction.reply('jon');
 }
 
-export { data, execute }; 
+export { data, execute };
