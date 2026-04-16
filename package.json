@@ -17,6 +17,7 @@
     "prepare": "husky || true"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.98",
     "@tonejs/midi": "^2.0.28",
     "discord.js": "^14.25.1",
     "dotenv": "^17.3.1",
