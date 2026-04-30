@@ -1,38 +1,45 @@
-import { promises as fs } from 'fs'; // Removed readdirSync
+import { promises as fs } from 'fs';
 import { join } from 'path';
 import { __dirname } from '../utils/filesystem.ts';
 
 const STICKERS_DIR = join(__dirname, 'assets', 'stickers', 'cats');
 
-let cachedStickers: string[] | null = null;
+let stickersManifest: Promise<string[]> | null = null;
+
+const fetchStickers = async (): Promise<string[]> => {
+  const entries = await fs.readdir(STICKERS_DIR, { withFileTypes: true });
+  const validExtensions = ['.png', '.jpg', '.jpeg', '.webp'];
+
+  const files = entries
+    .filter((e) => e.isFile() && validExtensions.some((ext) => e.name.toLowerCase().endsWith(ext)))
+    .map((e) => e.name);
+
+  if (files.length === 0) {
+    throw new Error('No valid sticker images found');
+  }
+  return files;
+};
 
 const getRandomSticker = async (): Promise<string> => {
-    try {
-        if (!cachedStickers) {
-            const entries = await fs.readdir(STICKERS_DIR, { withFileTypes: true });
-            cachedStickers = entries
-                .filter(e => e.isFile())
-                .map(e => e.name);
-                
-            if (cachedStickers.length === 0) {
-                throw new Error('No stickers found in cats folder');
-            }
-        }
-
-        const index = Math.floor(Math.random() * cachedStickers.length);
-        const chosen = cachedStickers[index];
-
-        if (!chosen) {
-            throw new Error(`Sticker at index ${index} is undefined. Cache length: ${cachedStickers.length}`);
-        }
-
-        return join(STICKERS_DIR, chosen);
-
-    } catch (error) {
-        console.error(error); 
-
-        throw error;
+  try {
+    if (!stickersManifest) {
+      stickersManifest = fetchStickers();
     }
+
+    const cachedList = await stickersManifest;
+    const index = Math.floor(Math.random() * cachedList.length);
+    const chosen = cachedList[index];
+
+    if (!chosen) {
+      throw new Error('Failed to select a random sticker');
+    }
+
+    return join(STICKERS_DIR, chosen);
+  } catch (error) {
+    stickersManifest = null;
+    console.error(error);
+    throw error;
+  }
 };
 
 export default getRandomSticker;
